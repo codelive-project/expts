@@ -13,8 +13,7 @@ class HostSession(Session):
     def __init__(self):
         Session.__init__(self)
         self._text_callback = self._text_widget.bind("<KeyPress>", self.broadcast_keypress, True)
-        self.host_thread = threading.Thread(target=self.start_host)
-        self.receiver_thread = threading.Thread(target=self.receive)
+        self.host_thread = threading.Thread(target=self.start_host, daemon=True)
         self.socket_lock = threading.Lock()
         self._max_connections = 5
         self.connections = dict()
@@ -35,23 +34,41 @@ class HostSession(Session):
         while True:
             client, add = self._sock.accept()
             handler_lock = threading.Lock()
-            handler_thread = threading.Thread(target=self.receive, args=(add, ))
-            self.connections[add] = {"receiver_thread" : handler_thread,
+            handler_thread = threading.Thread(target=self.handler, args=(add, ))
+            self.connections[add] = {"handler_thread" : handler_thread,
                                      "lock" : handler_lock,
                                      "socket": client}
             handler_thread.start()
 
-    def receive(self, conn_key):
+    def handler(self, conn):
+        sock = self.connections[conn]["socket"]
+        #self.send_current_state(conn)
+
         while True:
-            #lock.acquire()
-            chunk = self.connections[conn_key]["socket"].recv(MSGLEN)
-            #lock.release()
+            chunk = sock.recv(MSGLEN)
 
             if chunk == b'':
-                raise RuntimeError("socket connection broken")
+                print("Connection with", conn, "end")
+                break
             else:
                 msg = str(chunk, encoding="ascii")
                 self._instruction_queue.put(msg)
+
+    def send_current_state(self, conn):
+        sock = self.connections[conn]["socket"]
+        lock = self.connections[conn]["lock"]
+
+        full_text = self._text_widget.get("0.0", tk.END)
+
+        header = "FIRST[" + str(len(full_text)) + "]"
+        packet = full_text[:MSGLEN - len(header)]
+        self.send(sock, lock, packet)
+
+        last_end = MSGLEN - len(header)
+        for _ in range(0, (len(full_text) - len(header)) // MSGLEN):
+            packet = full_text[last_end : last_end + MSGLEN]
+            self.send(sock, lock, packet)
+            last_end = last_end + MSGLEN
 
     def start(self):
         self.host_thread.start()

@@ -25,13 +25,12 @@ def get_instruction(event, text, debug = False):
             repr(text.get(text.index(tk.INSERT)))
         )
     
+    instr = None
+    
     if ALL_REGEX.match(event.char):
         instr = "I[" + text.index(tk.INSERT) + "]" + event.char
     elif event.keysym == "BackSpace":
         pos = text.index(tk.INSERT)
-
-        if pos[pos.find('.') + 1 :] == '0':
-            return
 
         try:
             col = int(pos[pos.find('.') + 1 :])
@@ -53,5 +52,4 @@ def get_instruction(event, text, debug = False):
     elif event.keysym == "Delete":
         print("Right Delete")
     
-    if event.keysym != "Delete":
-        return instr
+    return instr

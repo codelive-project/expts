@@ -14,15 +14,18 @@ class ClientSession(Session):
         Session.__init__(self)
         self._text_callback = self._text_widget.bind("<KeyPress>", self.broadcast_keypress, True)
         self.socket_lock = threading.Lock()
-        self.receiver_thread = threading.Thread(target=self.receive, args=(self.socket_lock, ))
+        self.receiver_thread = threading.Thread(target=self.receive, args=(self.socket_lock, ), daemon=True)
         
     def broadcast_keypress(self, event):
         instr = get_instruction(event, self._text_widget)
 
-        if instr:
+        if instr != None:
             self.send(self._sock, self.socket_lock, instr)
     
     def receive(self, lock):
+        partial_msg = None
+        full_msg_len = 0
+
         while True:
             #lock.acquire()
             chunk = self._sock.recv(MSGLEN)
@@ -30,9 +33,23 @@ class ClientSession(Session):
 
             if chunk == b'':
                 raise RuntimeError("socket connection broken")
-            else:
-                msg = str(chunk, encoding="ascii")
+            
+            msg = str(chunk, encoding="ascii")
+
+            if partial_msg == None and len(msg) >= 5 and msg[0 : 5] == "FIRST":
+                full_msg_len = int(msg[msg.find("[") + 1 : msg.find("]")])
+                partial_msg = msg[msg.find("]") + 1:]
+                print("First msg\nlen:", full_msg_len, "\t part:", partial_msg)
+                
+            if partial_msg == None:
                 self._instruction_queue.put(msg)
+            else:
+                partial_msg += msg
+                if len(partial_msg) == full_msg_len:
+                    self._instruction_queue.put("I[0.0]" + partial_msg)
+                    print("I[0.0]" + partial_msg)
+                    partial_msg = None
+                    full_msg_len = 0
 
     def start(self):
         while True:

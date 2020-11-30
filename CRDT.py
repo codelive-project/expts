@@ -1,26 +1,53 @@
 from random import randint
+from sortedcontainers import SortedList, SortedDict
 
 class Character:
-    pass
+    def __init__(self, val, pos, author):
+        self._val = val
+        self._pos = pos
+        self._author = author
+
+    def author(self):
+        return self._pos[-1]
+
+    def __lt__(self, other):
+        if self._pos == None or other._pos == None:
+            raise Exception("Can not compare uninitialized variables")
+        return self._pos + (self._author) < other._pos + (other._author)
 
 class CRDT_DOC:
-    def __init__(self, file_path = None, siteID = 0, id_bound = 10, base_range = 16):
+    def __init__(self, file_path = None, siteID = 0, id_bound = 10, base_range = 4):
         self.siteID = siteID
         self._id_strategy = {}
         self._id_boundary = 10
         self._base_range = base_range
-        self._chars = self._from_file() if file_path else []
+        self._chars = self._from_file(file_path) if file_path else SortedList()
 
-    def _from_file(self):
-        return []
-    
+    def _from_file(self, file_path):
+
+        doc = SortedList()
+        with open(file_path) as file:
+            whole_file = file.read()
+
+            empty_start = Character("", (0, ), self.siteID)
+            empty_end = Character("", (2 ** self._base_range - 1), self.siteID)
+
+            doc.add(empty_start)
+            doc.add(empty_end)
+            for char in whole_file:
+                self.insert_local(char, empty_start._pos, )
+        return doc
+
+    def insert_local(self, val, pred_char, succ_char):
+        pass
+
     def generatePosBetween(self, pos1, pos2, depth = 0, newPos=[], is_root = True):
         id1 = pos1[depth]
         id2 = pos2[depth]
         alloc_strategy = self._get_strategy(depth)
 
         if (id2 - id1 > 1):
-            newDigit = self.generateIdBetween(id1, id2, depth)
+            newDigit = self.generatePosInLevel(id1, id2, depth)
             newPos.append(newDigit)
             return newPos
 
@@ -33,11 +60,11 @@ class CRDT_DOC:
                     newPos.append(id2)
                     return self.generatePosBetween(pos1, pos2, depth + 1, newPos)
             else:
-                # TODO: create new depth
-
-                pass
+                breadth = 2 ** (self._base_range + depth)
+                new_digit = self.generatePosInLevel(newPos.append(0), newPos.append(breadth - 1), depth + 1)
+                return newPos.append(new_digit)
     
-    def generateIdBetween(self, id1, id2, depth):
+    def generatePosInLevel(self, id1, id2, depth):
         strategy  = self._get_strategy(depth)
         step = id2 - id1
         new_id = None
@@ -60,9 +87,6 @@ class CRDT_DOC:
             self._id_strategy[depth] = "+" if randint(0, 2) == 0 else "-" 
         
         return self._id_strategy[depth]
-
-    def newID(self, digit):
-        pass
 
 if __name__ == "__main__":
     # For unit tests
