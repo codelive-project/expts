@@ -19,7 +19,7 @@ FREE_IDS = []
 MSGLEN = 2048
 SOCK_ADDR = ('localhost', 8000)
 
-class Session:
+class Session(tk.Event):
     def __init__(self, is_host = False, is_cohost = False):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._window, self._text_widget = self.create_window(is_host)
@@ -34,7 +34,7 @@ class Session:
 
         self.is_host = is_host
         self.is_cohost = is_cohost
-
+        
         # For hosts
         self._text_callback = self._text_widget.bind("<KeyPress>", self.broadcast_keypress, True)
         self._cursor_callback = self.bind_curosr_callbacks()
@@ -180,7 +180,7 @@ class Session:
             
             elif msg[0] == "R":
                 if self._text_widget.index(position) == \
-                   self._text_widget.index(position[:position.find(".")] + ".end"):
+                    self._text_widget.index(position[:position.find(".")] + ".end"):
                     idx = int(position[position.find(".") + 1: ]) + 1
                     codeview.insert(position[:position.find(".") + 1] + str(idx), '\n')
                 else:

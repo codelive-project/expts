@@ -15,14 +15,19 @@ class Session:
         self._instruction_queue = queue.SimpleQueue()
         self._text_callback = None
         self._change_thread = threading.Thread(target=self.apply_remote_changes, daemon=True)
+        self._remote_users = dict()
     
-    def send(self, sock, lock, msg):
-        #lock.acquire()
-        sent = sock.send(bytes(msg, 'ascii'))
-        #lock.release()
-        if sent == 0:
-            raise RuntimeError("socket connection broken")
-    
+    def send(self, sock, lock = None, msg = None):
+        totalsent = 0
+        while totalsent < MSGLEN:
+            sent = sock.send(msg[totalsent:])
+            if sent == 0:
+                raise RuntimeError("socket connection broken")
+            totalsent = totalsent + sent
+
+    def boradcast_cursor_motion(self, event):
+        pass
+
     def broadcast_keypress(self, event):
         pass
     
@@ -68,6 +73,7 @@ class Session:
     def start_session(self):
         self._change_thread.start()
         self._window.mainloop()
+
 
 if __name__ == "__main__":
     sess = Session()

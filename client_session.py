@@ -22,6 +22,10 @@ class ClientSession(Session):
         if instr != None:
             self.send(self._sock, self.socket_lock, instr)
     
+    def boradcast_cursor_motion(self, event):
+        instr = "M[" + self._text_widget.index(tk.CURRENT) + "]"
+        self.send(self._sock, self.socket_lock, instr)
+    
     def receive(self, lock):
         partial_msg = None
         full_msg_len = 0
